@@ -66,6 +66,13 @@ const pt = {
     "quoteTranslationApiKeyInfo": "Sua chave da API compatível com OpenAI",
     "quoteTranslationModelText": "Nome do Modelo",
     "quoteTranslationModelInfo": "Modelo de IA para usar na tradução",
+    "quoteTranslationTemperatureText": "Temperatura",
+    "quoteTranslationTemperatureInfo": "Controlar aleatoriedade da tradução (0.0-2.0)",
+    "quoteTranslationCustomPromptText": "Prompt Personalizado",
+    "quoteTranslationCustomPromptInfo": "Deixe vazio para usar prompt padrão",
+    "quoteTranslationPrefetchText": "Pré-carregar Tradução",
+    "quoteTranslationPrefetchInfo": "Pré-carregar tradução da próxima citação",
+    "testAPIConnection": "Testar Conexão",
     "search_suggestions_button": "Sugestões de Pesquisa",
     "search_suggestions_text": "Ativar sugestões de pesquisa",
 

@@ -66,6 +66,13 @@ const en = {
     "quoteTranslationApiKeyInfo": "Your OpenAI compatible API key",
     "quoteTranslationModelText": "Model Name",
     "quoteTranslationModelInfo": "AI model to use for translation",
+    "quoteTranslationTemperatureText": "Temperature",
+    "quoteTranslationTemperatureInfo": "Control translation randomness (0.0-2.0)",
+    "quoteTranslationCustomPromptText": "Custom Prompt",
+    "quoteTranslationCustomPromptInfo": "Leave empty to use default prompt",
+    "quoteTranslationPrefetchText": "Prefetch Translation",
+    "quoteTranslationPrefetchInfo": "Preload next quote translation in advance",
+    "testAPIConnection": "Test Connection",
     "search_suggestions_button": "Search Suggestions",
     "search_suggestions_text": "Enable search suggestions",
 

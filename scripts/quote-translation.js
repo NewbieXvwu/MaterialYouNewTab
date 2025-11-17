@@ -15,7 +15,10 @@ const DEFAULT_TRANSLATION_SETTINGS = {
     enabled: false,
     apiUrl: "https://api.openai.com/v1/chat/completions",
     apiKey: "",
-    model: "gpt-3.5-turbo"
+    model: "gpt-3.5-turbo",
+    temperature: 0.3,
+    customPrompt: "",
+    prefetch: false
 };
 
 // Get translation settings from localStorage
@@ -99,16 +102,21 @@ function getLanguageName(langCode) {
 }
 
 // Translate quote using OpenAI Compatible API with streaming
-async function translateQuoteStreaming(quoteText, targetLang, onChunk) {
+async function translateQuoteStreaming(quoteText, targetLang, onChunk, authorName = null) {
     const settings = getTranslationSettings();
     
     if (!settings.enabled || !settings.apiKey || targetLang === 'en') {
         return null;
     }
     
+    // Create cache key including author if present
+    const cacheKey = authorName ? `${quoteText}|${authorName}|${targetLang}` : `${quoteText}|${targetLang}`;
+    
     // Check cache first
-    const cachedTranslation = getTranslationFromCache(quoteText, targetLang);
-    if (cachedTranslation) {
+    const cache = getTranslationCache();
+    const cachedData = cache[cacheKey];
+    if (cachedData) {
+        const cachedTranslation = cachedData.translation;
         // Simulate streaming for cached results
         if (onChunk) {
             let index = 0;
@@ -129,7 +137,19 @@ async function translateQuoteStreaming(quoteText, targetLang, onChunk) {
     }
     
     const languageName = getLanguageName(targetLang);
-    const systemPrompt = `You are a professional translator. Translate the given text to ${languageName}. Only output the translation, nothing else.`;
+    let systemPrompt, textToTranslate;
+    
+    if (authorName) {
+        // When translating both quote and author
+        const defaultPromptWithAuthor = `You are a professional translator. Translate the following quote and author name to ${languageName}. Return ONLY the translated quote followed by a line break and then the translated author name. Format: [Translated Quote]\\n[Translated Author]`;
+        systemPrompt = settings.customPrompt || defaultPromptWithAuthor;
+        textToTranslate = `Quote: "${quoteText}"\nAuthor: ${authorName}`;
+    } else {
+        // When translating only quote
+        const defaultPrompt = `You are a professional translator. Translate the given text to ${languageName}. Only output the translation, nothing else.`;
+        systemPrompt = settings.customPrompt || defaultPrompt;
+        textToTranslate = quoteText;
+    }
     
     try {
         const response = await fetch(settings.apiUrl, {
@@ -142,10 +162,10 @@ async function translateQuoteStreaming(quoteText, targetLang, onChunk) {
                 model: settings.model,
                 messages: [
                     { role: 'system', content: systemPrompt },
-                    { role: 'user', content: quoteText }
+                    { role: 'user', content: textToTranslate }
                 ],
                 stream: true,
-                temperature: 0.3
+                temperature: settings.temperature || 0.3
             })
         });
         
@@ -187,9 +207,23 @@ async function translateQuoteStreaming(quoteText, targetLang, onChunk) {
             }
         }
         
-        // Save to cache
+        // Save to cache with proper cache key
         if (fullTranslation) {
-            saveTranslationToCache(quoteText, targetLang, fullTranslation);
+            const cache = getTranslationCache();
+            cache[cacheKey] = {
+                translation: fullTranslation,
+                timestamp: Date.now()
+            };
+            
+            // Limit cache size to 100 entries (keep most recent)
+            const entries = Object.entries(cache);
+            if (entries.length > 100) {
+                entries.sort((a, b) => b[1].timestamp - a[1].timestamp);
+                const limitedCache = Object.fromEntries(entries.slice(0, 100));
+                localStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(limitedCache));
+            } else {
+                localStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(cache));
+            }
         }
         
         return fullTranslation;
@@ -200,7 +234,7 @@ async function translateQuoteStreaming(quoteText, targetLang, onChunk) {
 }
 
 // Display translation with streaming
-function displayQuoteTranslation(quoteText, targetLang, translationElement) {
+function displayQuoteTranslation(quoteText, targetLang, translationElement, authorName = null) {
     if (!translationElement) return;
     
     const settings = getTranslationSettings();
@@ -216,7 +250,88 @@ function displayQuoteTranslation(quoteText, targetLang, translationElement) {
         if (chunk) {
             translationElement.textContent += chunk;
         }
-    });
+    }, authorName);
+}
+
+// Test API connection
+async function testTranslationAPI() {
+    const settings = getTranslationSettings();
+    
+    if (!settings.apiKey) {
+        return { success: false, message: 'API key is required' };
+    }
+    
+    try {
+        const response = await fetch(settings.apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${settings.apiKey}`
+            },
+            body: JSON.stringify({
+                model: settings.model,
+                messages: [
+                    { role: 'system', content: 'You are a helpful assistant.' },
+                    { role: 'user', content: 'Hello' }
+                ],
+                stream: false,
+                max_tokens: 10
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            return { 
+                success: false, 
+                message: `API Error: ${response.status} - ${response.statusText}`,
+                details: errorText
+            };
+        }
+        
+        const data = await response.json();
+        if (data.choices && data.choices.length > 0) {
+            return { success: true, message: 'API connection successful!' };
+        } else {
+            return { success: false, message: 'Unexpected API response format' };
+        }
+    } catch (error) {
+        return { 
+            success: false, 
+            message: `Connection failed: ${error.message}` 
+        };
+    }
+}
+
+// Prefetch next quote translation
+async function prefetchNextQuoteTranslation() {
+    const settings = getTranslationSettings();
+    if (!settings.enabled || !settings.prefetch) {
+        return;
+    }
+    
+    try {
+        // Get quotes for current language
+        if (typeof getQuotesForLanguage === 'function') {
+            const quotes = await getQuotesForLanguage(false);
+            if (quotes && quotes.length > 0) {
+                const randomIndex = Math.floor(Math.random() * quotes.length);
+                const selectedQuote = quotes[randomIndex];
+                const currentLang = localStorage.getItem('selectedLanguage') || 'en';
+                
+                // Prefetch translation in background
+                if (currentLang !== 'en') {
+                    await translateQuoteStreaming(
+                        selectedQuote.quote, 
+                        currentLang, 
+                        null, 
+                        selectedQuote.author
+                    );
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Prefetch error:', error);
+    }
 }
 
 // Initialize translation settings UI
@@ -228,10 +343,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiUrlInput = document.getElementById('quoteTranslationApiUrl');
     const apiKeyInput = document.getElementById('quoteTranslationApiKey');
     const modelInput = document.getElementById('quoteTranslationModel');
+    const temperatureInput = document.getElementById('quoteTranslationTemperature');
+    const customPromptInput = document.getElementById('quoteTranslationCustomPrompt');
+    const prefetchCheckbox = document.getElementById('quoteTranslationPrefetch');
     const saveButton = document.getElementById('saveQuoteTranslation');
+    const testButton = document.getElementById('testQuoteTranslationAPI');
     const apiUrlField = document.getElementById('quoteTranslationApiUrlField');
     const apiKeyField = document.getElementById('quoteTranslationApiKeyField');
     const modelField = document.getElementById('quoteTranslationModelField');
+    const temperatureField = document.getElementById('quoteTranslationTemperatureField');
+    const customPromptField = document.getElementById('quoteTranslationCustomPromptField');
+    const prefetchField = document.getElementById('quoteTranslationPrefetchField');
+    const saveField = document.getElementById('quoteTranslationSaveField');
     
     if (enabledCheckbox) {
         enabledCheckbox.checked = settings.enabled;
@@ -242,6 +365,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (apiUrlField) apiUrlField.style.display = isEnabled ? 'block' : 'none';
             if (apiKeyField) apiKeyField.style.display = isEnabled ? 'block' : 'none';
             if (modelField) modelField.style.display = isEnabled ? 'block' : 'none';
+            if (temperatureField) temperatureField.style.display = isEnabled ? 'block' : 'none';
+            if (customPromptField) customPromptField.style.display = isEnabled ? 'block' : 'none';
+            if (prefetchField) prefetchField.style.display = isEnabled ? 'block' : 'none';
+            if (saveField) saveField.style.display = isEnabled ? 'block' : 'none';
         }
         
         updateApiFieldsVisibility();
@@ -270,11 +397,51 @@ document.addEventListener('DOMContentLoaded', () => {
         modelInput.value = settings.model;
     }
     
+    if (temperatureInput) {
+        temperatureInput.value = settings.temperature || 0.3;
+    }
+    
+    if (customPromptInput) {
+        customPromptInput.value = settings.customPrompt || '';
+    }
+    
+    if (prefetchCheckbox) {
+        prefetchCheckbox.checked = settings.prefetch || false;
+    }
+    
+    if (testButton) {
+        testButton.addEventListener('click', async () => {
+            testButton.disabled = true;
+            testButton.textContent = '...';
+            
+            const result = await testTranslationAPI();
+            
+            if (result.success) {
+                testButton.textContent = '✓';
+                testButton.style.backgroundColor = '#4caf50';
+            } else {
+                testButton.textContent = '✗';
+                testButton.style.backgroundColor = '#f44336';
+                console.error('API Test failed:', result.message, result.details);
+            }
+            
+            setTimeout(() => {
+                testButton.disabled = false;
+                testButton.style.backgroundColor = '';
+                const translation = translations[currentLanguage]?.testAPIConnection || 'Test Connection';
+                testButton.textContent = translation;
+            }, 3000);
+        });
+    }
+    
     if (saveButton) {
         saveButton.addEventListener('click', () => {
             settings.apiUrl = apiUrlInput.value.trim() || DEFAULT_TRANSLATION_SETTINGS.apiUrl;
             settings.apiKey = apiKeyInput.value.trim();
             settings.model = modelInput.value.trim() || DEFAULT_TRANSLATION_SETTINGS.model;
+            settings.temperature = parseFloat(temperatureInput?.value) || 0.3;
+            settings.customPrompt = customPromptInput?.value.trim() || '';
+            settings.prefetch = prefetchCheckbox?.checked || false;
             
             saveTranslationSettings(settings);
             
@@ -311,5 +478,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const languageSelector = document.getElementById('languageSelector');
     if (languageSelector) {
         languageSelector.addEventListener('change', updateTranslationSettingsVisibility);
+    }
+    
+    // Trigger prefetch if enabled
+    if (settings.enabled && settings.prefetch) {
+        setTimeout(() => {
+            prefetchNextQuoteTranslation();
+        }, 3000);
     }
 });

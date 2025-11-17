@@ -66,6 +66,13 @@ const zh = {
     "quoteTranslationApiKeyInfo": "您的OpenAI兼容API密钥",
     "quoteTranslationModelText": "模型名称",
     "quoteTranslationModelInfo": "用于翻译的AI模型",
+    "quoteTranslationTemperatureText": "温度参数",
+    "quoteTranslationTemperatureInfo": "控制翻译的随机性（0.0-2.0）",
+    "quoteTranslationCustomPromptText": "自定义提示词",
+    "quoteTranslationCustomPromptInfo": "留空使用默认提示词",
+    "quoteTranslationPrefetchText": "预加载翻译",
+    "quoteTranslationPrefetchInfo": "提前加载下一条名言的翻译",
+    "testAPIConnection": "测试连接",
     "search_suggestions_button": "搜索建议",
     "search_suggestions_text": "启用搜索建议",
 
