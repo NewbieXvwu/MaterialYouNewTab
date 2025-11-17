@@ -1,0 +1,109 @@
+name: Build CRX Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag for the build (optional)'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Get version from manifest
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./manifest.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extension version: $VERSION"
+      
+      - name: Install dependencies
+        run: |
+          npm install -g crx3
+      
+      - name: Create build directory
+        run: mkdir -p build
+      
+      - name: Copy extension files
+        run: |
+          # Copy all necessary files to build directory
+          cp -r docs build/
+          cp -r favicon build/
+          cp -r fonts build/
+          cp -r images build/
+          cp -r locales build/
+          cp -r scripts build/
+          cp -r svgs build/
+          cp -r tools build/
+          cp index.html build/
+          cp manifest.json build/
+          cp privacy-policy.html build/
+          cp style.css build/
+          cp LICENSE build/
+          cp README.md build/
+      
+      - name: Generate private key
+        run: |
+          openssl genrsa 2048 | openssl pkcs8 -topk8 -nocrypt -out build/key.pem
+      
+      - name: Build CRX package
+        run: |
+          cd build
+          crx3 . -o material-you-newtab-${{ steps.get_version.outputs.version }}.crx -p key.pem
+          cd ..
+          mv build/material-you-newtab-${{ steps.get_version.outputs.version }}.crx ./
+      
+      - name: Create ZIP package (for manual installation)
+        run: |
+          cd build
+          rm -f key.pem
+          zip -r ../material-you-newtab-${{ steps.get_version.outputs.version }}.zip . -x "*.pem"
+          cd ..
+      
+      - name: Upload CRX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: material-you-newtab-crx-${{ steps.get_version.outputs.version }}
+          path: material-you-newtab-${{ steps.get_version.outputs.version }}.crx
+          retention-days: 30
+      
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: material-you-newtab-zip-${{ steps.get_version.outputs.version }}
+          path: material-you-newtab-${{ steps.get_version.outputs.version }}.zip
+          retention-days: 30
+      
+      - name: Generate build summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "- **CRX Size:** $(ls -lh material-you-newtab-${{ steps.get_version.outputs.version }}.crx | awk '{print $5}')" >> $GITHUB_STEP_SUMMARY
+          echo "- **ZIP Size:** $(ls -lh material-you-newtab-${{ steps.get_version.outputs.version }}.zip | awk '{print $5}')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation Instructions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### CRX Installation (Chrome/Edge)" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the CRX file from artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "2. Open chrome://extensions/ in your browser" >> $GITHUB_STEP_SUMMARY
+          echo "3. Enable 'Developer mode'" >> $GITHUB_STEP_SUMMARY
+          echo "4. Drag and drop the CRX file onto the extensions page" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### ZIP Installation (Manual)" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download and extract the ZIP file" >> $GITHUB_STEP_SUMMARY
+          echo "2. Open chrome://extensions/ or edge://extensions/" >> $GITHUB_STEP_SUMMARY
+          echo "3. Enable 'Developer mode'" >> $GITHUB_STEP_SUMMARY
+          echo "4. Click 'Load unpacked' and select the extracted folder" >> $GITHUB_STEP_SUMMARY

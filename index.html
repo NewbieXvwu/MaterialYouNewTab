@@ -33,6 +33,7 @@
     <script defer src="scripts/custom-text.js"></script>
     <script defer src="scripts/search.js"></script>
     <script defer src="scripts/quotes.js"></script>
+    <script defer src="scripts/quote-translation.js"></script>
     <script defer src="scripts/shortcuts.js"></script>
     <script defer src="scripts/script.js"></script>
     <script defer src="scripts/search-suggestions.js"></script>
@@ -956,6 +957,7 @@
             <div class="quotesCont" id="motivationalQuotesCont">
                 <div class="quotesContainer">
                 </div>
+                <div class="quoteTranslation" style="display: none;"></div>
                 <div class="authorWrapper">
                     <div class="authorName"><span></span></div>
                     <div class="qtRounder">
@@ -1381,6 +1383,49 @@
                                 <input id="motivationalQuotesCheckbox" type="checkbox">
                                 <span class="toggle"></span>
                             </label>
+                        </div>
+
+                        <!-- Quote Translation Settings -->
+                        <div class="ttcont" id="quoteTranslationSettings" style="display: none;">
+                            <div class="texts">
+                                <div class="bigText" id="quoteTranslationText">Auto Translate Quotes</div>
+                                <div class="infoText" id="quoteTranslationInfo">Translate quotes to current language using AI
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input id="quoteTranslationCheckbox" type="checkbox">
+                                <span class="toggle"></span>
+                            </label>
+                        </div>
+
+                        <div class="ttcont unflex" id="quoteTranslationApiUrlField" style="display: none;">
+                            <div class="texts">
+                                <div class="bigText" id="quoteTranslationApiUrlText">OpenAI API URL</div>
+                                <div class="infoText" id="quoteTranslationApiUrlInfo">Compatible with OpenAI API format
+                                </div>
+                            </div>
+                            <input id="quoteTranslationApiUrl" placeholder="https://api.openai.com/v1/chat/completions" type="text">
+                        </div>
+
+                        <div class="ttcont unflex" id="quoteTranslationApiKeyField" style="display: none;">
+                            <div class="texts">
+                                <div class="bigText" id="quoteTranslationApiKeyText">API Key</div>
+                                <div class="infoText" id="quoteTranslationApiKeyInfo">Your OpenAI compatible API key
+                                </div>
+                            </div>
+                            <input id="quoteTranslationApiKey" placeholder="sk-..." type="password">
+                        </div>
+
+                        <div class="ttcont unflex" id="quoteTranslationModelField" style="display: none;">
+                            <div class="texts">
+                                <div class="bigText" id="quoteTranslationModelText">Model Name</div>
+                                <div class="infoText" id="quoteTranslationModelInfo">AI model to use for translation
+                                </div>
+                            </div>
+                            <input id="quoteTranslationModel" placeholder="gpt-3.5-turbo" type="text">
+                            <div class="bottom">
+                                <button class="savebtn" id="saveQuoteTranslation">Save</button>
+                            </div>
                         </div>
 
                         <!-- ---🟡--- -->

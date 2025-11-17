@@ -47,6 +47,16 @@ const az = {
     // "hideSearchWith": "Hide Search Engines",
     // "hideSearchWithInfo": "Switch between search engines by clicking its icon",
     "search_suggestions_button": "Təklifləri axtarın",
+        "motivationalQuotesText": "Motivational Quotes",
+    "motivationalQuotesInfo": "Show quotes below the searchbar",
+    "quoteTranslationText": "Auto Translate Quotes",
+    "quoteTranslationInfo": "Translate quotes to current language using AI",
+    "quoteTranslationApiUrlText": "OpenAI API URL",
+    "quoteTranslationApiUrlInfo": "Compatible with OpenAI API format",
+    "quoteTranslationApiKeyText": "API Key",
+    "quoteTranslationApiKeyInfo": "Your OpenAI compatible API key",
+    "quoteTranslationModelText": "Model Name",
+    "quoteTranslationModelInfo": "AI model to use for translation",
     "search_suggestions_text": "Axtarış təkliflərini aktivləşdirin",
 
     // Proxy

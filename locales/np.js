@@ -47,6 +47,16 @@ const np = {
     "hideSearchWith": "खोज इन्जिनहरू लुकाउनुहोस्",
     "hideSearchWithInfo": "यसको आइकनमा क्लिक गरेर खोज इन्जिनहरू बीच स्विच गर्नुहोस्",
     "search_suggestions_button": "खोज सुझावहरू",
+        "motivationalQuotesText": "Motivational Quotes",
+    "motivationalQuotesInfo": "Show quotes below the searchbar",
+    "quoteTranslationText": "Auto Translate Quotes",
+    "quoteTranslationInfo": "Translate quotes to current language using AI",
+    "quoteTranslationApiUrlText": "OpenAI API URL",
+    "quoteTranslationApiUrlInfo": "Compatible with OpenAI API format",
+    "quoteTranslationApiKeyText": "API Key",
+    "quoteTranslationApiKeyInfo": "Your OpenAI compatible API key",
+    "quoteTranslationModelText": "Model Name",
+    "quoteTranslationModelInfo": "AI model to use for translation",
     "search_suggestions_text": "खोज सुझावहरू सक्षम गर्नुहोस्",
 
     // Proxy
