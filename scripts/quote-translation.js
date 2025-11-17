@@ -353,58 +353,44 @@ async function testTranslationAPI(customSettings = null) {
 }
 
 // Get time period identifier for future time based on frequency
+// This must match the logic in quotes.js getTimePeriodId() to ensure preloaded quotes are reused correctly
 function getFutureTimePeriodId(frequency) {
     const now = new Date();
     
     switch (frequency) {
         case 'hourly':
-            // Next hour
+            // Next hour (using same format as quotes.js)
             const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
             return `${nextHour.getFullYear()}-${nextHour.getMonth()}-${nextHour.getDate()}-${nextHour.getHours()}`;
         case 'every-time':
-            // For every-time mode, use a pseudo-future timestamp
-            // This will be the next time the page loads
-            return `${now.getTime() + 1000}`;
+            // For every-time mode, prefetch the sequential next quote
+            // Don't use timestamp as it will never match on next load
+            return null; // Special handling in getFutureQuoteIndex
         case 'daily':
         default:
-            // Next day
+            // Next day (using same format as quotes.js)
             const nextDay = new Date(now.getTime() + 24 * 60 * 60 * 1000);
             return `${nextDay.getFullYear()}-${nextDay.getMonth()}-${nextDay.getDate()}`;
     }
 }
 
 // Get deterministic quote index for a future time period
+// This must use the same hash algorithm as quotes.js getDailyQuoteIndex() to ensure cache hits
 function getFutureQuoteIndex(quotes, frequency = 'daily') {
     if (!quotes || quotes.length === 0) return 0;
     
-    // For every-time mode, generate next quote index
+    // For every-time mode, don't prefetch since each page load should show a different quote
+    // The quote changes on every load, so prefetching won't help
     if (frequency === 'every-time') {
-        // Get current quote data to avoid selecting the same quote
-        const currentQuoteData = localStorage.getItem('current_quote_data');
-        let currentIndex = -1;
-        if (currentQuoteData) {
-            try {
-                const data = JSON.parse(currentQuoteData);
-                currentIndex = data.index || -1;
-            } catch (e) {
-                // Invalid cache
-            }
-        }
-        
-        // Select next quote (wrap around if needed)
-        let nextIndex = (currentIndex + 1) % quotes.length;
-        
-        // If we only have one quote, keep the same
-        if (quotes.length === 1) {
-            nextIndex = 0;
-        }
-        
-        return nextIndex;
+        console.log('[Quote Translation] Skipping prefetch for every-time mode - quote changes on each load');
+        return -1; // Return -1 to signal "don't prefetch"
     }
     
     const timePeriodId = getFutureTimePeriodId(frequency);
+    if (!timePeriodId) return 0;
     
-    // Simple hash function for the time period string
+    // Use the SAME hash function as quotes.js getDailyQuoteIndex()
+    // This ensures the preloaded translation matches the quote that will be displayed
     let hash = 0;
     for (let i = 0; i < timePeriodId.length; i++) {
         const char = timePeriodId.charCodeAt(i);
@@ -439,6 +425,12 @@ async function prefetchNextQuoteTranslation(quotes) {
             
             // Get next quote index based on frequency
             const nextIndex = getFutureQuoteIndex(quotesToUse, frequency);
+            
+            // Skip prefetch for every-time mode (returns -1)
+            if (nextIndex === -1) {
+                return;
+            }
+            
             const MAX_QUOTE_LENGTH = 140;
             
             // Find a suitable quote starting from next index
