@@ -2253,6 +2253,17 @@ body[data-bg="wallpaper"] .searchWithCont .hint:hover {
     unicode-bidi: isolate;
 }
 
+.quoteBlock {
+    position: relative;
+    width: 100%;
+}
+
+.translationBlock {
+    position: relative;
+    width: 100%;
+    margin-top: 10px;
+}
+
 .quotesContainer {
     position: relative;
     background-color: var(--accentLightTint-blue);
@@ -2260,6 +2271,7 @@ body[data-bg="wallpaper"] .searchWithCont .hint:hover {
     width: 100%;
     border-radius: 20px;
     padding: 20px;
+    padding-bottom: 50px;
     line-height: 28px;
     display: flex;
     align-items: center;
@@ -2270,13 +2282,15 @@ body[data-bg="wallpaper"] .searchWithCont .hint:hover {
     background-color: var(--accentLightTint-blue);
     width: 100%;
     border-radius: 20px;
-    padding: 15px 20px;
-    margin-top: 10px;
-    line-height: 24px;
+    padding: 20px;
+    padding-bottom: 50px;
+    line-height: 28px;
     font-size: 0.95em;
     opacity: 0.9;
     font-style: italic;
-    min-height: 50px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
 }
 
 body[data-bg="wallpaper"] .quoteTranslation {
