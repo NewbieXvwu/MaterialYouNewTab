@@ -16,7 +16,7 @@ const DEFAULT_TRANSLATION_SETTINGS = {
     apiUrl: "https://api.openai.com/v1/chat/completions",
     apiKey: "",
     model: "gpt-3.5-turbo",
-    temperature: 0.3,
+    temperature: 0.7,
     customPrompt: "",
     prefetch: false
 };
@@ -141,7 +141,7 @@ async function translateQuoteStreaming(quoteText, targetLang, onChunk, authorNam
     
     if (authorName) {
         // When translating both quote and author
-        const defaultPromptWithAuthor = `You are a professional translator. Translate the following quote and author name to ${languageName}. Return ONLY the translated quote followed by a line break and then the translated author name. Format: [Translated Quote]\\n[Translated Author]`;
+        const defaultPromptWithAuthor = `You are a professional translator. Translate the following quote and author name to ${languageName}. Return ONLY the translated quote followed by a vertical bar | and then the translated author name. Format: [Translated Quote]|[Translated Author]`;
         systemPrompt = settings.customPrompt || defaultPromptWithAuthor;
         textToTranslate = `Quote: "${quoteText}"\nAuthor: ${authorName}`;
     } else {
@@ -165,7 +165,7 @@ async function translateQuoteStreaming(quoteText, targetLang, onChunk, authorNam
                     { role: 'user', content: textToTranslate }
                 ],
                 stream: true,
-                temperature: settings.temperature || 0.3
+                temperature: settings.temperature || 0.7
             })
         });
         
@@ -239,26 +239,63 @@ function displayQuoteTranslation(quoteText, targetLang, translationElement, auth
     
     const settings = getTranslationSettings();
     if (!settings.enabled || targetLang === 'en') {
-        translationElement.style.display = 'none';
+        const translationBlock = document.querySelector('.translationBlock');
+        if (translationBlock) {
+            translationBlock.style.display = 'none';
+        }
         return;
     }
     
-    translationElement.textContent = '';
-    translationElement.style.display = 'block';
+    const translationBlock = document.querySelector('.translationBlock');
+    const translationAuthorElement = document.querySelector('.translationAuthorName span');
+    const translationAuthorWrapper = document.querySelector('.translationAuthorWrapper');
     
+    if (!translationBlock) return;
+    
+    translationElement.textContent = '';
+    translationBlock.style.display = 'block';
+    
+    if (translationAuthorElement) {
+        translationAuthorElement.textContent = '';
+    }
+    
+    let fullTranslation = '';
     translateQuoteStreaming(quoteText, targetLang, (chunk, isComplete) => {
         if (chunk) {
-            translationElement.textContent += chunk;
+            fullTranslation += chunk;
+            // Check if we have the separator yet
+            const separatorIndex = fullTranslation.indexOf('|');
+            if (separatorIndex === -1) {
+                // No separator yet, display everything as quote
+                translationElement.textContent = fullTranslation;
+            } else {
+                // We have the separator, split quote and author
+                const translatedQuote = fullTranslation.substring(0, separatorIndex).trim();
+                const translatedAuthor = fullTranslation.substring(separatorIndex + 1).trim();
+                translationElement.textContent = translatedQuote;
+                if (translationAuthorElement) {
+                    translationAuthorElement.textContent = translatedAuthor;
+                }
+            }
+        }
+        
+        if (isComplete && translationAuthorWrapper && translationAuthorElement) {
+            // Animate author name width
+            requestAnimationFrame(() => {
+                const fullWidth = translationAuthorElement.scrollWidth;
+                const padding = 16;
+                translationAuthorWrapper.style.width = (fullWidth + padding * 2) + "px";
+            });
         }
     }, authorName);
 }
 
 // Test API connection
-async function testTranslationAPI() {
-    const settings = getTranslationSettings();
+async function testTranslationAPI(customSettings = null) {
+    const settings = customSettings || getTranslationSettings();
     
     if (!settings.apiKey) {
-        return { success: false, message: 'API key is required' };
+        return { success: false, message: 'API key is required', code: 'NO_API_KEY' };
     }
     
     try {
@@ -280,24 +317,32 @@ async function testTranslationAPI() {
         });
         
         if (!response.ok) {
-            const errorText = await response.text();
+            let errorDetails = '';
+            try {
+                const errorText = await response.text();
+                errorDetails = errorText;
+            } catch (e) {
+                errorDetails = 'Unable to read error response';
+            }
             return { 
                 success: false, 
                 message: `API Error: ${response.status} - ${response.statusText}`,
-                details: errorText
+                code: response.status,
+                details: errorDetails
             };
         }
         
         const data = await response.json();
         if (data.choices && data.choices.length > 0) {
-            return { success: true, message: 'API connection successful!' };
+            return { success: true, message: 'API connection successful!', code: 200 };
         } else {
-            return { success: false, message: 'Unexpected API response format' };
+            return { success: false, message: 'Unexpected API response format', code: 'INVALID_RESPONSE' };
         }
     } catch (error) {
         return { 
             success: false, 
-            message: `Connection failed: ${error.message}` 
+            message: `Connection failed: ${error.message}`,
+            code: 'NETWORK_ERROR'
         };
     }
 }
@@ -306,6 +351,7 @@ async function testTranslationAPI() {
 async function prefetchNextQuoteTranslation() {
     const settings = getTranslationSettings();
     if (!settings.enabled || !settings.prefetch) {
+        console.log('[Quote Translation] Prefetch disabled');
         return;
     }
     
@@ -314,23 +360,45 @@ async function prefetchNextQuoteTranslation() {
         if (typeof getQuotesForLanguage === 'function') {
             const quotes = await getQuotesForLanguage(false);
             if (quotes && quotes.length > 0) {
+                // Select a random quote that will be shown next time
                 const randomIndex = Math.floor(Math.random() * quotes.length);
                 const selectedQuote = quotes[randomIndex];
                 const currentLang = localStorage.getItem('selectedLanguage') || 'en';
                 
+                console.log('[Quote Translation] Prefetching translation for next quote:');
+                console.log('  Quote:', selectedQuote.quote);
+                console.log('  Author:', selectedQuote.author);
+                console.log('  Target Language:', currentLang);
+                
                 // Prefetch translation in background
                 if (currentLang !== 'en') {
-                    await translateQuoteStreaming(
+                    const translation = await translateQuoteStreaming(
                         selectedQuote.quote, 
                         currentLang, 
                         null, 
                         selectedQuote.author
                     );
+                    
+                    if (translation) {
+                        // Parse translation (format: translatedQuote|translatedAuthor)
+                        const parts = translation.split('|');
+                        const translatedQuote = parts[0]?.trim() || translation;
+                        const translatedAuthor = parts[1]?.trim() || '';
+                        
+                        console.log('[Quote Translation] Prefetch completed:');
+                        console.log('  Translated Quote:', translatedQuote);
+                        console.log('  Translated Author:', translatedAuthor);
+                        console.log('  This translation is now cached and will be used when the quote is displayed next time.');
+                    } else {
+                        console.log('[Quote Translation] Prefetch failed - no translation returned');
+                    }
+                } else {
+                    console.log('[Quote Translation] Skipping prefetch - current language is English');
                 }
             }
         }
     } catch (error) {
-        console.error('Prefetch error:', error);
+        console.error('[Quote Translation] Prefetch error:', error);
     }
 }
 
@@ -398,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (temperatureInput) {
-        temperatureInput.value = settings.temperature || 0.3;
+        temperatureInput.value = settings.temperature || 0.7;
     }
     
     if (customPromptInput) {
@@ -414,22 +482,44 @@ document.addEventListener('DOMContentLoaded', () => {
             testButton.disabled = true;
             testButton.textContent = '...';
             
-            const result = await testTranslationAPI();
+            // Use current values from input fields, not saved settings
+            const currentSettings = {
+                apiUrl: apiUrlInput?.value.trim() || DEFAULT_TRANSLATION_SETTINGS.apiUrl,
+                apiKey: apiKeyInput?.value.trim() || '',
+                model: modelInput?.value.trim() || DEFAULT_TRANSLATION_SETTINGS.model,
+                temperature: parseFloat(temperatureInput?.value) || 0.7
+            };
+            
+            const result = await testTranslationAPI(currentSettings);
             
             if (result.success) {
                 testButton.textContent = '✓';
                 testButton.style.backgroundColor = '#4caf50';
+                console.log('[Quote Translation] API test successful:', result.message);
             } else {
                 testButton.textContent = '✗';
                 testButton.style.backgroundColor = '#f44336';
-                console.error('API Test failed:', result.message, result.details);
+                console.error('[Quote Translation] API test failed:');
+                console.error('  Error Code:', result.code);
+                console.error('  Error Message:', result.message);
+                if (result.details) {
+                    console.error('  Error Details:', result.details);
+                }
+                // Show alert with error information
+                const errorMsg = `Code: ${result.code}\nMessage: ${result.message}`;
+                alert(errorMsg);
             }
             
             setTimeout(() => {
                 testButton.disabled = false;
                 testButton.style.backgroundColor = '';
-                const translation = translations[currentLanguage]?.testAPIConnection || 'Test Connection';
-                testButton.textContent = translation;
+                // Restore original text - will be handled by language system
+                if (typeof translations !== 'undefined' && typeof currentLanguage !== 'undefined') {
+                    const translation = translations[currentLanguage]?.testAPIConnection || 'Test Connection';
+                    testButton.textContent = translation;
+                } else {
+                    testButton.textContent = 'Test Connection';
+                }
             }, 3000);
         });
     }
@@ -439,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
             settings.apiUrl = apiUrlInput.value.trim() || DEFAULT_TRANSLATION_SETTINGS.apiUrl;
             settings.apiKey = apiKeyInput.value.trim();
             settings.model = modelInput.value.trim() || DEFAULT_TRANSLATION_SETTINGS.model;
-            settings.temperature = parseFloat(temperatureInput?.value) || 0.3;
+            settings.temperature = parseFloat(temperatureInput?.value) || 0.7;
             settings.customPrompt = customPromptInput?.value.trim() || '';
             settings.prefetch = prefetchCheckbox?.checked || false;
             
@@ -448,8 +538,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Show feedback
             saveButton.textContent = '✓';
             setTimeout(() => {
-                const translation = translations[currentLanguage]?.saveAPI || 'Save';
-                saveButton.textContent = translation;
+                if (typeof translations !== 'undefined' && typeof currentLanguage !== 'undefined') {
+                    const translation = translations[currentLanguage]?.saveAPI || 'Save';
+                    saveButton.textContent = translation;
+                } else {
+                    saveButton.textContent = 'Save';
+                }
             }, 1500);
             
             // Reload quote with new settings if translation is enabled
