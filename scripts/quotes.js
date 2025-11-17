@@ -235,6 +235,26 @@ async function getQuotesForLanguage(forceRefresh = false) {
     }
 }
 
+// Get a deterministic quote index based on date
+function getDailyQuoteIndex(quotes) {
+    if (!quotes || quotes.length === 0) return 0;
+    
+    // Use current date as seed for deterministic selection
+    const today = new Date();
+    const dateString = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+    
+    // Simple hash function for the date string
+    let hash = 0;
+    for (let i = 0; i < dateString.length; i++) {
+        const char = dateString.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Return a positive index within bounds
+    return Math.abs(hash) % quotes.length;
+}
+
 // Display a random quote that meets the length requirements
 function displayRandomQuote(quotes) {
     if (!quotes || quotes.length === 0) {
@@ -244,11 +264,14 @@ function displayRandomQuote(quotes) {
 
     let selectedQuote;
     const maxAttempts = 15; // Prevent infinite loop
+    
+    // Start with deterministic daily quote
+    let startIndex = getDailyQuoteIndex(quotes);
 
     // Try to find a quote that fits within the character limit
     for (let attempts = 0; attempts < maxAttempts; attempts++) {
-        const randomIndex = Math.floor(Math.random() * quotes.length);
-        selectedQuote = quotes[randomIndex];
+        const index = (startIndex + attempts) % quotes.length;
+        selectedQuote = quotes[index];
 
         const totalLength = selectedQuote.quote.length + selectedQuote.author.length;
         if (totalLength <= MAX_QUOTE_LENGTH) {
@@ -272,6 +295,11 @@ function displayRandomQuote(quotes) {
     if (translationElement && typeof displayQuoteTranslation === 'function') {
         const currentLang = localStorage.getItem('selectedLanguage') || 'en';
         displayQuoteTranslation(selectedQuote.quote, currentLang, translationElement, selectedQuote.author);
+    }
+    
+    // Prefetch translation for tomorrow's quote
+    if (typeof prefetchNextQuoteTranslation === 'function') {
+        prefetchNextQuoteTranslation(quotes);
     }
 }
 

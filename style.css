@@ -2336,6 +2336,37 @@ body[data-bg="wallpaper"] .quoteTranslation {
     padding: 0;
 }
 
+.translationAuthorWrapper {
+    position: absolute;
+    bottom: 0;
+    inset-inline-end: 0;
+    display: flex;
+    align-items: flex-end;
+}
+
+.translationAuthorName {
+    background: var(--bg-color-blue);
+    position: relative;
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    width: 40px;
+    border-start-start-radius: 20px;
+    border-end-end-radius: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: width 0.4s var(--md-motion-ease);
+    box-sizing: border-box;
+    opacity: 0.9;
+}
+
+.translationAuthorName span {
+    display: inline-block;
+    padding: 0;
+}
+
 .qtRounder {
     position: absolute;
     width: 20px;
@@ -2367,6 +2398,14 @@ body[data-bg="wallpaper"] .quotesContainer {
 }
 
 body[data-bg="wallpaper"] .authorName {
+    background-color: color-mix(
+        in srgb,
+        var(--bg-color-blue) calc(var(--transparency) * 1.5),
+        transparent
+    );
+}
+
+body[data-bg="wallpaper"] .translationAuthorName {
     background-color: color-mix(
         in srgb,
         var(--bg-color-blue) calc(var(--transparency) * 1.5),

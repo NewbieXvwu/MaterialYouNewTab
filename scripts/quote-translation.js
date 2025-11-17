@@ -248,7 +248,7 @@ function displayQuoteTranslation(quoteText, targetLang, translationElement, auth
     
     const translationBlock = document.querySelector('.translationBlock');
     const translationAuthorElement = document.querySelector('.translationAuthorName span');
-    const translationAuthorWrapper = document.querySelector('.translationAuthorWrapper');
+    const translationAuthorContainer = document.querySelector('.translationAuthorName');
     
     if (!translationBlock) return;
     
@@ -257,6 +257,11 @@ function displayQuoteTranslation(quoteText, targetLang, translationElement, auth
     
     if (translationAuthorElement) {
         translationAuthorElement.textContent = '';
+    }
+    
+    // Reset author container width to initial state
+    if (translationAuthorContainer) {
+        translationAuthorContainer.style.width = '40px';
     }
     
     let fullTranslation = '';
@@ -279,12 +284,12 @@ function displayQuoteTranslation(quoteText, targetLang, translationElement, auth
             }
         }
         
-        if (isComplete && translationAuthorWrapper && translationAuthorElement) {
+        if (isComplete && translationAuthorContainer && translationAuthorElement) {
             // Animate author name width
             requestAnimationFrame(() => {
                 const fullWidth = translationAuthorElement.scrollWidth;
                 const padding = 16;
-                translationAuthorWrapper.style.width = (fullWidth + padding * 2) + "px";
+                translationAuthorContainer.style.width = (fullWidth + padding * 2) + "px";
             });
         }
     }, authorName);
@@ -347,8 +352,29 @@ async function testTranslationAPI(customSettings = null) {
     }
 }
 
+// Get deterministic quote index for a future date
+function getFutureQuoteIndex(quotes, daysOffset = 1) {
+    if (!quotes || quotes.length === 0) return 0;
+    
+    // Calculate future date
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysOffset);
+    const dateString = `${futureDate.getFullYear()}-${futureDate.getMonth()}-${futureDate.getDate()}`;
+    
+    // Simple hash function for the date string
+    let hash = 0;
+    for (let i = 0; i < dateString.length; i++) {
+        const char = dateString.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Return a positive index within bounds
+    return Math.abs(hash) % quotes.length;
+}
+
 // Prefetch next quote translation
-async function prefetchNextQuoteTranslation() {
+async function prefetchNextQuoteTranslation(quotes) {
     const settings = getTranslationSettings();
     if (!settings.enabled || !settings.prefetch) {
         console.log('[Quote Translation] Prefetch disabled');
@@ -356,45 +382,65 @@ async function prefetchNextQuoteTranslation() {
     }
     
     try {
-        // Get quotes for current language
-        if (typeof getQuotesForLanguage === 'function') {
-            const quotes = await getQuotesForLanguage(false);
-            if (quotes && quotes.length > 0) {
-                // Select a random quote that will be shown next time
-                const randomIndex = Math.floor(Math.random() * quotes.length);
-                const selectedQuote = quotes[randomIndex];
-                const currentLang = localStorage.getItem('selectedLanguage') || 'en';
+        // Use provided quotes or fetch them
+        let quotesToUse = quotes;
+        if (!quotesToUse && typeof getQuotesForLanguage === 'function') {
+            quotesToUse = await getQuotesForLanguage(false);
+        }
+        
+        if (quotesToUse && quotesToUse.length > 0) {
+            const currentLang = localStorage.getItem('selectedLanguage') || 'en';
+            
+            // Get tomorrow's quote index using deterministic selection
+            const tomorrowIndex = getFutureQuoteIndex(quotesToUse, 1);
+            const MAX_QUOTE_LENGTH = 140;
+            
+            // Find a suitable quote starting from tomorrow's index
+            let selectedQuote;
+            for (let attempts = 0; attempts < 15; attempts++) {
+                const index = (tomorrowIndex + attempts) % quotesToUse.length;
+                selectedQuote = quotesToUse[index];
                 
-                console.log('[Quote Translation] Prefetching translation for next quote:');
-                console.log('  Quote:', selectedQuote.quote);
-                console.log('  Author:', selectedQuote.author);
-                console.log('  Target Language:', currentLang);
-                
-                // Prefetch translation in background
-                if (currentLang !== 'en') {
-                    const translation = await translateQuoteStreaming(
-                        selectedQuote.quote, 
-                        currentLang, 
-                        null, 
-                        selectedQuote.author
-                    );
-                    
-                    if (translation) {
-                        // Parse translation (format: translatedQuote|translatedAuthor)
-                        const parts = translation.split('|');
-                        const translatedQuote = parts[0]?.trim() || translation;
-                        const translatedAuthor = parts[1]?.trim() || '';
-                        
-                        console.log('[Quote Translation] Prefetch completed:');
-                        console.log('  Translated Quote:', translatedQuote);
-                        console.log('  Translated Author:', translatedAuthor);
-                        console.log('  This translation is now cached and will be used when the quote is displayed next time.');
-                    } else {
-                        console.log('[Quote Translation] Prefetch failed - no translation returned');
-                    }
-                } else {
-                    console.log('[Quote Translation] Skipping prefetch - current language is English');
+                const totalLength = selectedQuote.quote.length + selectedQuote.author.length;
+                if (totalLength <= MAX_QUOTE_LENGTH) {
+                    break;
                 }
+            }
+            
+            if (!selectedQuote) {
+                console.log('[Quote Translation] No suitable quote found for prefetch');
+                return;
+            }
+            
+            console.log('[Quote Translation] Prefetching translation for tomorrow\'s quote:');
+            console.log('  Quote:', selectedQuote.quote);
+            console.log('  Author:', selectedQuote.author);
+            console.log('  Target Language:', currentLang);
+            
+            // Prefetch translation in background
+            if (currentLang !== 'en') {
+                const translation = await translateQuoteStreaming(
+                    selectedQuote.quote, 
+                    currentLang, 
+                    null, 
+                    selectedQuote.author
+                );
+                
+                if (translation) {
+                    // Parse translation (format: translatedQuote|translatedAuthor)
+                    const parts = translation.split('|');
+                    const translatedQuote = parts[0]?.trim() || translation;
+                    const translatedAuthor = parts[1]?.trim() || '';
+                    
+                    console.log('[Quote Translation] Prefetch completed:');
+                    console.log('  Translated Quote:', translatedQuote);
+                    console.log('  Translated Author:', translatedAuthor);
+                    console.log('  This translation is now cached and will be used when tomorrow\'s quote is displayed.');
+                } else {
+                    console.log('[Quote Translation] Prefetch failed - no translation returned');
+                }
+            } else {
+                console.log('[Quote Translation] Skipping prefetch - current language is English');
             }
         }
     } catch (error) {
