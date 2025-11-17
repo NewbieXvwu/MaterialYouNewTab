@@ -51,6 +51,16 @@ const mr = {
     "hideSearchWith": "सर्च इंजिन सिलेक्टर लपवा",
     "hideSearchWithInfo": "आयकॉनवर क्लिक करून सर्च इंजिन बदला",
     "search_suggestions_button": "शोध सूचना",
+        "motivationalQuotesText": "Motivational Quotes",
+    "motivationalQuotesInfo": "Show quotes below the searchbar",
+    "quoteTranslationText": "Auto Translate Quotes",
+    "quoteTranslationInfo": "Translate quotes to current language using AI",
+    "quoteTranslationApiUrlText": "OpenAI API URL",
+    "quoteTranslationApiUrlInfo": "Compatible with OpenAI API format",
+    "quoteTranslationApiKeyText": "API Key",
+    "quoteTranslationApiKeyInfo": "Your OpenAI compatible API key",
+    "quoteTranslationModelText": "Model Name",
+    "quoteTranslationModelInfo": "AI model to use for translation",
     "search_suggestions_text": "शोध सूचना सक्षम करा",
 
     // Proxy

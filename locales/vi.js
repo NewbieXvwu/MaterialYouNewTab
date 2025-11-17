@@ -47,6 +47,16 @@ const vi = {
     "hideSearchWith": "Ẩn công cụ tìm kiếm",
     "hideSearchWithInfo": "Chuyển đổi giữa các công cụ tìm kiếm bằng cách nhấp vào biểu tượng của nó",
     "search_suggestions_button": "Gợi ý tìm kiếm",
+        "motivationalQuotesText": "Motivational Quotes",
+    "motivationalQuotesInfo": "Show quotes below the searchbar",
+    "quoteTranslationText": "Auto Translate Quotes",
+    "quoteTranslationInfo": "Translate quotes to current language using AI",
+    "quoteTranslationApiUrlText": "OpenAI API URL",
+    "quoteTranslationApiUrlInfo": "Compatible with OpenAI API format",
+    "quoteTranslationApiKeyText": "API Key",
+    "quoteTranslationApiKeyInfo": "Your OpenAI compatible API key",
+    "quoteTranslationModelText": "Model Name",
+    "quoteTranslationModelInfo": "AI model to use for translation",
     "search_suggestions_text": "Bật/tắt gợi ý tìm kiếm",
 
     // Proxy

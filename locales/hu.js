@@ -46,6 +46,16 @@ const hu = {
     "hideSearchWith": "Keresőmotorok elrejtése",
     "hideSearchWithInfo": "Váltás a keresőmotorok között az ikonra kattintva",
     "search_suggestions_button": "Keresési javaslatok",
+        "motivationalQuotesText": "Motivational Quotes",
+    "motivationalQuotesInfo": "Show quotes below the searchbar",
+    "quoteTranslationText": "Auto Translate Quotes",
+    "quoteTranslationInfo": "Translate quotes to current language using AI",
+    "quoteTranslationApiUrlText": "OpenAI API URL",
+    "quoteTranslationApiUrlInfo": "Compatible with OpenAI API format",
+    "quoteTranslationApiKeyText": "API Key",
+    "quoteTranslationApiKeyInfo": "Your OpenAI compatible API key",
+    "quoteTranslationModelText": "Model Name",
+    "quoteTranslationModelInfo": "AI model to use for translation",
     "search_suggestions_text": "Keresési javaslatok bekapcsolása",
 
     // Proxy

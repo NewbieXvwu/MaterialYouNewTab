@@ -266,6 +266,13 @@ function displayRandomQuote(quotes) {
         const padding = 16;
         authorContainer.style.width = (fullWidth + padding * 2) + "px";
     });
+
+    // Display translation if available
+    const translationElement = document.querySelector('.quoteTranslation');
+    if (translationElement && typeof displayQuoteTranslation === 'function') {
+        const currentLang = localStorage.getItem('selectedLanguage') || 'en';
+        displayQuoteTranslation(selectedQuote.quote, currentLang, translationElement);
+    }
 }
 
 // Main function to load and display a quote
