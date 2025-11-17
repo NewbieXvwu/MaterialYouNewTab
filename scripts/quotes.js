@@ -271,7 +271,7 @@ function displayRandomQuote(quotes) {
     const translationElement = document.querySelector('.quoteTranslation');
     if (translationElement && typeof displayQuoteTranslation === 'function') {
         const currentLang = localStorage.getItem('selectedLanguage') || 'en';
-        displayQuoteTranslation(selectedQuote.quote, currentLang, translationElement);
+        displayQuoteTranslation(selectedQuote.quote, currentLang, translationElement, selectedQuote.author);
     }
 }
 

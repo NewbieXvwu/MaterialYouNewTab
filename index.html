@@ -1423,7 +1423,41 @@
                                 </div>
                             </div>
                             <input id="quoteTranslationModel" placeholder="gpt-3.5-turbo" type="text">
+                        </div>
+
+                        <div class="ttcont unflex" id="quoteTranslationTemperatureField" style="display: none;">
+                            <div class="texts">
+                                <div class="bigText" id="quoteTranslationTemperatureText">Temperature</div>
+                                <div class="infoText" id="quoteTranslationTemperatureInfo">Control translation randomness (0.0-2.0)
+                                </div>
+                            </div>
+                            <input id="quoteTranslationTemperature" placeholder="0.3" type="number" min="0" max="2" step="0.1">
+                        </div>
+
+                        <div class="ttcont unflex" id="quoteTranslationCustomPromptField" style="display: none;">
+                            <div class="texts">
+                                <div class="bigText" id="quoteTranslationCustomPromptText">Custom Prompt</div>
+                                <div class="infoText" id="quoteTranslationCustomPromptInfo">Leave empty to use default prompt
+                                </div>
+                            </div>
+                            <textarea id="quoteTranslationCustomPrompt" placeholder="You are a professional translator..." rows="3"></textarea>
+                        </div>
+
+                        <div class="ttcont" id="quoteTranslationPrefetchField" style="display: none;">
+                            <div class="texts">
+                                <div class="bigText" id="quoteTranslationPrefetchText">Prefetch Translation</div>
+                                <div class="infoText" id="quoteTranslationPrefetchInfo">Preload next quote translation in advance
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input id="quoteTranslationPrefetch" type="checkbox">
+                                <span class="toggle"></span>
+                            </label>
+                        </div>
+
+                        <div class="ttcont unflex" id="quoteTranslationSaveField" style="display: none;">
                             <div class="bottom">
+                                <button class="savebtn" id="testQuoteTranslationAPI">Test Connection</button>
                                 <button class="savebtn" id="saveQuoteTranslation">Save</button>
                             </div>
                         </div>

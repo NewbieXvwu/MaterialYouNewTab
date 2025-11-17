@@ -2247,6 +2247,7 @@ body[data-bg="wallpaper"] .searchWithCont .hint:hover {
     margin-top: var(--gap);
     position: relative;
     display: flex;
+    flex-direction: column;
     font-size: 1rem;
     direction: ltr; /* Remove when multilingual quote is supported */
     unicode-bidi: isolate;
@@ -2255,11 +2256,13 @@ body[data-bg="wallpaper"] .searchWithCont .hint:hover {
 .quotesContainer {
     position: relative;
     background-color: var(--accentLightTint-blue);
-    height: 100px;
+    min-height: 80px;
     width: 100%;
     border-radius: 20px;
     padding: 20px;
     line-height: 28px;
+    display: flex;
+    align-items: center;
 }
 
 .quoteTranslation {
@@ -2273,7 +2276,7 @@ body[data-bg="wallpaper"] .searchWithCont .hint:hover {
     font-size: 0.95em;
     opacity: 0.9;
     font-style: italic;
-    min-height: 20px;
+    min-height: 50px;
 }
 
 body[data-bg="wallpaper"] .quoteTranslation {
@@ -3139,19 +3142,31 @@ input:checked + .toggle:before {
     display: block !important;
 }
 
-.ttcont input {
+.ttcont input,
+.ttcont textarea {
     width: 100%;
     color: var(--textColorDark-blue);
     background-color: var(--whitishColor-blue);
     margin-top: 6px;
-    height: 30px;
     border-radius: 10px;
     border: none;
     outline: none;
     padding: 0 11px;
+    font-family: inherit;
 }
 
-.ttcont input:focus {
+.ttcont input {
+    height: 30px;
+}
+
+.ttcont textarea {
+    padding: 8px 11px;
+    resize: vertical;
+    min-height: 60px;
+}
+
+.ttcont input:focus,
+.ttcont textarea:focus {
     box-shadow: 0 0 2px var(--darkColor-blue);
 }
 
