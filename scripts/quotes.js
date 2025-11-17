@@ -17,6 +17,14 @@ const authorContainer = document.querySelector(".authorName");
 const MAX_QUOTE_LENGTH = 140;
 const MIN_QUOTES_FOR_LANG = 100;
 const ONE_DAY = 24 * 60 * 60 * 1000;
+const ONE_HOUR = 60 * 60 * 1000;
+
+// Quote update frequency options
+const QUOTE_FREQUENCY = {
+    DAILY: 'daily',
+    HOURLY: 'hourly',
+    EVERY_TIME: 'every-time'
+};
 
 // Fallback quote for when everything fails
 const FALLBACK_QUOTE = {
@@ -235,18 +243,64 @@ async function getQuotesForLanguage(forceRefresh = false) {
     }
 }
 
-// Get a deterministic quote index based on date
+// Get quote update frequency setting
+function getQuoteFrequency() {
+    return localStorage.getItem('quote_update_frequency') || QUOTE_FREQUENCY.DAILY;
+}
+
+// Set quote update frequency
+function setQuoteFrequency(frequency) {
+    localStorage.setItem('quote_update_frequency', frequency);
+}
+
+// Get time period identifier based on frequency
+function getTimePeriodId(frequency = null) {
+    const freq = frequency || getQuoteFrequency();
+    const now = new Date();
+    
+    switch (freq) {
+        case QUOTE_FREQUENCY.HOURLY:
+            // Format: YYYY-MM-DD-HH
+            return `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`;
+        case QUOTE_FREQUENCY.EVERY_TIME:
+            // Use timestamp for unique ID each time page loads
+            return `${Date.now()}`;
+        case QUOTE_FREQUENCY.DAILY:
+        default:
+            // Format: YYYY-MM-DD
+            return `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+    }
+}
+
+// Get a deterministic quote index based on time period
 function getDailyQuoteIndex(quotes) {
     if (!quotes || quotes.length === 0) return 0;
     
-    // Use current date as seed for deterministic selection
-    const today = new Date();
-    const dateString = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+    const frequency = getQuoteFrequency();
     
-    // Simple hash function for the date string
+    // For every-time mode, check if we have a cached quote for this session
+    if (frequency === QUOTE_FREQUENCY.EVERY_TIME) {
+        const cachedQuoteData = localStorage.getItem('current_quote_data');
+        if (cachedQuoteData) {
+            try {
+                const data = JSON.parse(cachedQuoteData);
+                // Use the cached index if it exists and is valid
+                if (data.index !== undefined && data.index < quotes.length) {
+                    return data.index;
+                }
+            } catch (e) {
+                // Invalid cache, continue to generate new index
+            }
+        }
+    }
+    
+    // Use time period as seed for deterministic selection
+    const timePeriodId = getTimePeriodId();
+    
+    // Simple hash function for the time period string
     let hash = 0;
-    for (let i = 0; i < dateString.length; i++) {
-        const char = dateString.charCodeAt(i);
+    for (let i = 0; i < timePeriodId.length; i++) {
+        const char = timePeriodId.charCodeAt(i);
         hash = ((hash << 5) - hash) + char;
         hash = hash & hash; // Convert to 32-bit integer
     }
@@ -279,6 +333,17 @@ function displayRandomQuote(quotes) {
         }
     }
 
+    // Store current quote data for every-time mode
+    const frequency = getQuoteFrequency();
+    if (frequency === QUOTE_FREQUENCY.EVERY_TIME) {
+        const currentQuoteData = {
+            index: (startIndex + quotes.indexOf(selectedQuote)) % quotes.length,
+            timePeriodId: getTimePeriodId(),
+            timestamp: Date.now()
+        };
+        localStorage.setItem('current_quote_data', JSON.stringify(currentQuoteData));
+    }
+
     // Display the selected quote
     quotesContainer.textContent = selectedQuote.quote;
     authorName.textContent = selectedQuote.author;
@@ -297,7 +362,7 @@ function displayRandomQuote(quotes) {
         displayQuoteTranslation(selectedQuote.quote, currentLang, translationElement, selectedQuote.author);
     }
     
-    // Prefetch translation for tomorrow's quote
+    // Prefetch translation for next quote
     if (typeof prefetchNextQuoteTranslation === 'function') {
         prefetchNextQuoteTranslation(quotes);
     }
@@ -320,10 +385,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const motivationalQuotesCont = document.getElementById("motivationalQuotesCont");
     const motivationalQuotesCheckbox = document.getElementById("motivationalQuotesCheckbox");
     const searchWithContainer = document.getElementById("search-with-container");
+    const quoteFrequencyField = document.getElementById("quoteFrequencyField");
+    const quoteFrequencySelect = document.getElementById("quoteFrequencySelect");
 
     // Load states from localStorage
     hideSearchWith.checked = localStorage.getItem("showShortcutSwitch") === "true";
     motivationalQuotesCheckbox.checked = localStorage.getItem("motivationalQuotesVisible") !== "false";
+    
+    // Load quote frequency setting
+    const savedFrequency = getQuoteFrequency();
+    if (quoteFrequencySelect) {
+        quoteFrequencySelect.value = savedFrequency;
+    }
 
     // Initialize language tracking
     lastKnownLanguage = currentLanguage;
@@ -340,6 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!isHideSearchWithEnabled) {
             quotesToggle.classList.add("inactive");
             motivationalQuotesCont.style.display = "none";
+            if (quoteFrequencyField) quoteFrequencyField.style.display = "none";
             clearQuotesStorage();
             return;
         }
@@ -348,6 +422,11 @@ document.addEventListener("DOMContentLoaded", () => {
         quotesToggle.classList.remove("inactive");
         searchWithContainer.style.display = isMotivationalQuotesEnabled ? "none" : "flex";
         motivationalQuotesCont.style.display = isMotivationalQuotesEnabled ? "flex" : "none";
+        
+        // Show/hide frequency selector
+        if (quoteFrequencyField) {
+            quoteFrequencyField.style.display = isMotivationalQuotesEnabled ? "block" : "none";
+        }
 
         // Load quotes if motivational quotes are enabled
         if (isMotivationalQuotesEnabled) {
@@ -367,4 +446,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     motivationalQuotesCheckbox.addEventListener("change", updateMotivationalQuotesState);
+    
+    // Handle frequency change
+    if (quoteFrequencySelect) {
+        quoteFrequencySelect.addEventListener("change", () => {
+            const newFrequency = quoteFrequencySelect.value;
+            setQuoteFrequency(newFrequency);
+            
+            // Don't refresh cache if it exists, just update for next time
+            console.log(`[Quotes] Frequency changed to: ${newFrequency}`);
+            console.log('[Quotes] Current quote will remain. Next quote will use new frequency.');
+        });
+    }
 });

@@ -3196,7 +3196,8 @@ input:checked + .toggle:before {
 }
 
 .ttcont input,
-.ttcont textarea {
+.ttcont textarea,
+.ttcont select {
     width: 100%;
     color: var(--textColorDark-blue);
     background-color: var(--whitishColor-blue);
@@ -3212,6 +3213,11 @@ input:checked + .toggle:before {
     height: 30px;
 }
 
+.ttcont select {
+    height: 30px;
+    cursor: pointer;
+}
+
 .ttcont textarea {
     padding: 8px 11px;
     resize: vertical;
@@ -3219,7 +3225,8 @@ input:checked + .toggle:before {
 }
 
 .ttcont input:focus,
-.ttcont textarea:focus {
+.ttcont textarea:focus,
+.ttcont select:focus {
     box-shadow: 0 0 2px var(--darkColor-blue);
 }
 

@@ -352,19 +352,62 @@ async function testTranslationAPI(customSettings = null) {
     }
 }
 
-// Get deterministic quote index for a future date
-function getFutureQuoteIndex(quotes, daysOffset = 1) {
+// Get time period identifier for future time based on frequency
+function getFutureTimePeriodId(frequency) {
+    const now = new Date();
+    
+    switch (frequency) {
+        case 'hourly':
+            // Next hour
+            const nextHour = new Date(now.getTime() + 60 * 60 * 1000);
+            return `${nextHour.getFullYear()}-${nextHour.getMonth()}-${nextHour.getDate()}-${nextHour.getHours()}`;
+        case 'every-time':
+            // For every-time mode, use a pseudo-future timestamp
+            // This will be the next time the page loads
+            return `${now.getTime() + 1000}`;
+        case 'daily':
+        default:
+            // Next day
+            const nextDay = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            return `${nextDay.getFullYear()}-${nextDay.getMonth()}-${nextDay.getDate()}`;
+    }
+}
+
+// Get deterministic quote index for a future time period
+function getFutureQuoteIndex(quotes, frequency = 'daily') {
     if (!quotes || quotes.length === 0) return 0;
     
-    // Calculate future date
-    const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + daysOffset);
-    const dateString = `${futureDate.getFullYear()}-${futureDate.getMonth()}-${futureDate.getDate()}`;
+    // For every-time mode, generate next quote index
+    if (frequency === 'every-time') {
+        // Get current quote data to avoid selecting the same quote
+        const currentQuoteData = localStorage.getItem('current_quote_data');
+        let currentIndex = -1;
+        if (currentQuoteData) {
+            try {
+                const data = JSON.parse(currentQuoteData);
+                currentIndex = data.index || -1;
+            } catch (e) {
+                // Invalid cache
+            }
+        }
+        
+        // Select next quote (wrap around if needed)
+        let nextIndex = (currentIndex + 1) % quotes.length;
+        
+        // If we only have one quote, keep the same
+        if (quotes.length === 1) {
+            nextIndex = 0;
+        }
+        
+        return nextIndex;
+    }
     
-    // Simple hash function for the date string
+    const timePeriodId = getFutureTimePeriodId(frequency);
+    
+    // Simple hash function for the time period string
     let hash = 0;
-    for (let i = 0; i < dateString.length; i++) {
-        const char = dateString.charCodeAt(i);
+    for (let i = 0; i < timePeriodId.length; i++) {
+        const char = timePeriodId.charCodeAt(i);
         hash = ((hash << 5) - hash) + char;
         hash = hash & hash; // Convert to 32-bit integer
     }
@@ -391,14 +434,17 @@ async function prefetchNextQuoteTranslation(quotes) {
         if (quotesToUse && quotesToUse.length > 0) {
             const currentLang = localStorage.getItem('selectedLanguage') || 'en';
             
-            // Get tomorrow's quote index using deterministic selection
-            const tomorrowIndex = getFutureQuoteIndex(quotesToUse, 1);
+            // Get quote update frequency
+            const frequency = localStorage.getItem('quote_update_frequency') || 'daily';
+            
+            // Get next quote index based on frequency
+            const nextIndex = getFutureQuoteIndex(quotesToUse, frequency);
             const MAX_QUOTE_LENGTH = 140;
             
-            // Find a suitable quote starting from tomorrow's index
+            // Find a suitable quote starting from next index
             let selectedQuote;
             for (let attempts = 0; attempts < 15; attempts++) {
-                const index = (tomorrowIndex + attempts) % quotesToUse.length;
+                const index = (nextIndex + attempts) % quotesToUse.length;
                 selectedQuote = quotesToUse[index];
                 
                 const totalLength = selectedQuote.quote.length + selectedQuote.author.length;
@@ -412,10 +458,12 @@ async function prefetchNextQuoteTranslation(quotes) {
                 return;
             }
             
-            console.log('[Quote Translation] Prefetching translation for tomorrow\'s quote:');
+            const frequencyLabel = frequency === 'daily' ? 'next day' : (frequency === 'hourly' ? 'next hour' : 'next time');
+            console.log(`[Quote Translation] Prefetching translation for ${frequencyLabel}'s quote:`);
             console.log('  Quote:', selectedQuote.quote);
             console.log('  Author:', selectedQuote.author);
             console.log('  Target Language:', currentLang);
+            console.log('  Frequency:', frequency);
             
             // Prefetch translation in background
             if (currentLang !== 'en') {
@@ -435,7 +483,7 @@ async function prefetchNextQuoteTranslation(quotes) {
                     console.log('[Quote Translation] Prefetch completed:');
                     console.log('  Translated Quote:', translatedQuote);
                     console.log('  Translated Author:', translatedAuthor);
-                    console.log('  This translation is now cached and will be used when tomorrow\'s quote is displayed.');
+                    console.log(`  This translation is now cached and will be used when ${frequencyLabel}'s quote is displayed.`);
                 } else {
                     console.log('[Quote Translation] Prefetch failed - no translation returned');
                 }
